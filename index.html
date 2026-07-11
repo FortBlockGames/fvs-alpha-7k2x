@@ -255,16 +255,20 @@
   .histMeta{float:right;font-size:12px;color:#6e81a6;line-height:1.9}
 
   /* ===== mobile overhaul (2026-07-11) ===== */
-  /* touch buttons: separate PASS / SHOOT / SPRINT in an arc */
-  #touchCtl .tcShoot{width:104px;height:104px;font-size:15px;background:radial-gradient(circle at 50% 33%,#e8503f,#6e1510);border:2px solid #ff9b8a}
-  #touchCtl .tcShoot small{display:block;font-size:9px;font-weight:700;opacity:.85;letter-spacing:.5px}
-  #touchCtl .tcPass{width:86px;height:86px;font-size:14px;background:radial-gradient(circle at 50% 33%,#3f7ce8,#15306e);border:2px solid #6f9bff;margin-bottom:30px}
-  #touchCtl .tcSprint{margin-bottom:58px}
+  /* touch buttons: SPRINT at left, PASS stacked above SHOOT on the right */
+  #touchCtl .tcBtns{align-items:flex-end;gap:18px}
+  #touchCtl .tcCol{display:flex;flex-direction:column;align-items:center;gap:14px}
+  #touchCtl .tcShoot{width:106px;height:106px;font-size:17px;line-height:1;background:radial-gradient(circle at 50% 33%,#e8503f,#6e1510);border:2px solid #ff9b8a}
+  #touchCtl .tcShoot small{display:block;margin-top:4px;font-size:8.5px;font-weight:800;opacity:.9;letter-spacing:.4px;white-space:nowrap}
+  #touchCtl .tcPass{width:84px;height:84px;font-size:15px;line-height:1.06;background:radial-gradient(circle at 50% 33%,#3f7ce8,#15306e);border:2px solid #6f9bff;margin:0}
+  #touchCtl .tcSprint{width:84px;height:84px;font-size:12.5px;line-height:1.06;margin-bottom:16px}
   @media(max-width:820px),(max-height:480px){
-    #touchCtl .tcShoot{width:76px;height:76px;font-size:11px}
-    #touchCtl .tcShoot small{font-size:7px}
-    #touchCtl .tcPass{width:62px;height:62px;font-size:10px;margin-bottom:22px}
-    #touchCtl .tcSprint{width:54px;height:54px;font-size:9px;margin-bottom:44px}
+    #touchCtl .tcBtns{gap:12px}
+    #touchCtl .tcCol{gap:10px}
+    #touchCtl .tcShoot{width:82px;height:82px;font-size:13px}
+    #touchCtl .tcShoot small{font-size:7px;margin-top:2px}
+    #touchCtl .tcPass{width:62px;height:62px;font-size:10.5px}
+    #touchCtl .tcSprint{width:62px;height:62px;font-size:9.5px;margin-bottom:12px}
   }
   /* store: responsive grid, no sideways scroll ever */
   #storeOv{overflow-x:hidden}
@@ -392,8 +396,10 @@
   <div class="tcStick" id="tcStick"><div class="tcKnob" id="tcKnob"></div></div>
   <div class="tcBtns">
     <div class="tcBtn tcSprint" id="tcSprint">SPRINT<br>/ JUKE</div>
-    <div class="tcBtn tcPass" id="tcPass">PASS</div>
-    <div class="tcBtn tcShoot" id="tcShoot">SHOOT<br><small>hold = power</small></div>
+    <div class="tcCol">
+      <div class="tcBtn tcPass" id="tcPass">PASS<br>/ TKL</div>
+      <div class="tcBtn tcShoot" id="tcShoot">SHOOT<br><small>HOLD&nbsp;=&nbsp;POWER</small></div>
+    </div>
   </div>
 </div>
 
@@ -485,7 +491,7 @@
   <button id="storeCloseX" title="Back to menu" style="position:fixed;top:16px;right:18px;z-index:13;width:48px;height:48px;border-radius:50%;border:2px solid #46557f;background:rgba(13,18,38,.95);color:#fff;font-size:22px;font-weight:900;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.5)">&#10005;</button>
   <div class="panel storePanel" style="max-width:880px">
     <h1 class="storeH1" style="color:#ffd54f;text-shadow:0 0 24px rgba(255,213,79,.5)">&#127757; EARTH NATIONALS</h1>
-    <div class="storeNote">OPEN ALPHA TEST STORE &middot; pay with $FBG on Avalanche &middot; test pricing: everything 1 $FBG</div>
+    <div class="storeNote">OPEN ALPHA TEST STORE &middot; pay with $FBG on Avalanche &middot; test pricing: 500 $FBG &middot; premium 2000 $FBG</div>
     <div id="walletBar">
       <button class="modeBtn" id="walletBtn" onclick="connectWallet()">CONNECT WALLET</button>
       <span id="walletBal" style="color:#7fd4ff;font-weight:700;font-size:13px"></span>
@@ -602,9 +608,11 @@ const CONFIG = {
     TREASURY: '0x65AcEADB99A74355e239F3fc6bDCa366CaC32268',       // Conquest treasury (confirmed by FBG 2026-07-10)
     RPC: 'https://api.avax.network/ext/bc/C/rpc',
     DECIMALS: 18,
-    PRICE_FBG: 1,                                                  // TEST PRICING: everything 1 $FBG until pricing sign-off
+    PRICE_FBG: 1,                                                  // legacy flat price (kept for fallback); real prices come from the tiers below
+    PRICE_BASE: 500,                                               // standard store item price in $FBG
+    PRICE_PREMIUM: 2000,                                           // higher-tier (premium) item price in $FBG
     EXPLORER: 'https://snowtrace.io',
-    WC_PROJECT_ID: ''   // WalletConnect Cloud project ID — paste it here to enable buying from any normal browser
+    WC_PROJECT_ID: '65db25e6565c04b226d0a56295164733'   // WalletConnect Cloud project ID — paste it here to enable buying from any normal browser
   },
 };
 const ROLE_NUM={DEF:4,MID:7,WING:11,STR:9};
@@ -655,7 +663,7 @@ for(const k of FKEYS) FACTIONS[k].key=k;
 function ownedList(){ try{ return JSON.parse(localStorage.getItem('svf_owned2')||'[]'); }catch(e){ return []; } }
 function isOwned(k){ const f=FACTIONS[k]; return !f||!f.price || ownedList().includes(k); }
 function buyTeam(k){ try{ const o=ownedList(); if(!o.includes(k)){ o.push(k); localStorage.setItem('svf_owned2',JSON.stringify(o)); } }catch(e){} }
-// special purchasable characters (cosmetic skins you play AS). Test pricing: 1 $FBG each (CONFIG.CHECKOUT.PRICE_FBG).
+// special purchasable characters (cosmetic skins you play AS). Test pricing: 500 $FBG, premium 2000 $FBG (see itemPrice()).
 const SPECIALS={
   cowboy:  {name:'Skull Cowboy',  icon:'\uD83D\uDC80', price:5000, blurb:'Black-clad gunslinger, skull face'},
   bots:    {name:'Bots McClaine', icon:'\uD83E\uDD16', price:5000, blurb:'The TAKEOVER announcer, on the pitch'},
@@ -667,8 +675,9 @@ const SPECIALS={
   emin:    {name:'Hot Emin', icon:'\uD83D\uDCAA', price:5000, blurb:'Tank top, red triangle, shades'},
   dayman:  {name:'Dayman', icon:'\u2600\uFE0F', price:25, priceTxt:'$25 in $FBG \u00b7 PREMIUM', premium:true, blurb:'Champion of the Sun, glowing aura'},
   squatch: {name:'Seedsquatch', icon:'\uD83D\uDC63', price:25, priceTxt:'$25 in $FBG \u00b7 PREMIUM', premium:true, blurb:'Bigfoot, glowing eyes, smoke aura \u00b7 dances on goals'},
+  giraffe: {name:'Longneck Lou', icon:'\uD83E\uDD92', price:500, blurb:'Towering giraffe \u00b7 long neck, beady eyes, ossicone horns'},
 };
-const CHAR_KEYS=['cowboy','bots','bear','salmon','hingle','messi','fragbot','emin','dayman','squatch'];
+const CHAR_KEYS=['cowboy','bots','bear','salmon','hingle','messi','fragbot','emin','giraffe','dayman','squatch'];
 function ownedChars(){ try{ return JSON.parse(localStorage.getItem('svf_chars2')||'[]'); }catch(e){ return []; } }
 function charOwned(k){ return ownedChars().includes(k); }
 function buyChar(k){ try{ const o=ownedChars(); if(!o.includes(k)){ o.push(k); localStorage.setItem('svf_chars2',JSON.stringify(o)); } }catch(e){} }
@@ -1883,6 +1892,7 @@ const SPECDEF={
   emin:    {skin:'#c08552', hair:'#1a120c', c1:'#0e0e10', c2:'#0e0e10', chestTex:1, tank:1, face:'emin', hat:'shorthair', hatC:'#1a120c'},
   dayman:  {skin:'#d9a878', hair:'#3a2410', c1:'#ffd11a', c2:'#e0b400', face:'dayman', hat:'tophat', hatC:'#f4f4f4', tie:'#ffd11a', collar:'#ffffff', aura:'#ffe14d'},
   squatch: {skin:'#5a4030', hair:'#3d2a1e', c1:'#4b3527', c2:'#3d2a1e', face:'squatch', hat:'furhead', hatC:'#3d2a1e', shoulders:'#3d2a1e', aura:'#cfd6dd', mist:1},
+  giraffe: {skin:'#e6be6a', hair:'#8a5a24', c1:'#e0a94e', c2:'#6e4a1e', face:'giraffe', hat:'giraffe', hatC:'#8a5a24', headY:62, neck:1},
 };
 function makeSpecialFace(spec){
   const c=document.createElement('canvas'); c.width=64; c.height=64; const x=c.getContext('2d');
@@ -1955,6 +1965,13 @@ function makeSpecialFace(spec){
     x.fillStyle='#2c1d14'; x.fillRect(26,42,4,3); x.fillRect(34,42,4,3);
     x.fillStyle='#241a12'; x.fillRect(23,48,18,3);
     x.fillStyle='#f0ead8'; x.fillRect(25,51,3,4); x.fillRect(36,51,3,4);
+  } else if(spec.face==='giraffe'){
+    x.fillStyle=spec.skin; x.fillRect(0,0,64,64);
+    x.fillStyle='#b5842f'; x.fillRect(5,7,12,11); x.fillRect(47,9,12,12); x.fillRect(25,3,12,9); x.fillRect(41,39,15,13); x.fillRect(7,41,12,13); // giraffe patches
+    x.fillStyle='#ffffff'; x.fillRect(19,24,8,8); x.fillRect(37,24,8,8);        // eye whites
+    x.fillStyle='#140d05'; x.fillRect(22,27,3,3); x.fillRect(40,27,3,3);        // beady pupils
+    x.fillStyle='#caa25e'; x.fillRect(20,44,24,15);                             // muzzle
+    x.fillStyle='#3a2410'; x.fillRect(25,49,3,4); x.fillRect(36,49,3,4);        // nostrils
   } else {
     x.fillStyle=spec.skin; x.fillRect(0,0,64,64);
     x.fillStyle='#47692b'; x.fillRect(8,8,12,9); x.fillRect(44,11,11,8); x.fillRect(28,6,9,6); // dark spots
@@ -1974,8 +1991,9 @@ function makeSpecialChest(spec){
   x.strokeStyle='#e02323'; x.lineWidth=8; x.lineJoin='miter'; x.beginPath(); x.moveTo(64,44); x.lineTo(40,94); x.lineTo(88,94); x.closePath(); x.stroke();
   return new THREE.CanvasTexture(c);
 }
-function addSpecialGear(body, spec, M){
+function addSpecialGear(body, spec, M, headY){
   const add=(geo,col,y,z,x)=>{ const m=new THREE.Mesh(geo,M(col)); m.position.set(x||0,y,z||0); body.add(m); return m; };
+  const hy=headY||45.5;
   if(spec.hat==='cowboy'){
     add(new THREE.BoxGeometry(28,1.8,24), spec.hatC, 51.8);
     add(new THREE.BoxGeometry(15,8,15),   spec.hatC, 56.5);
@@ -2013,6 +2031,17 @@ function addSpecialGear(body, spec, M){
     add(new THREE.BoxGeometry(18.8,5.5,16.8), spec.hatC, 53.6);
     add(new THREE.BoxGeometry(19,3,4), spec.hatC, 50.6, 7);
     add(new THREE.BoxGeometry(18.8,7,4), spec.hatC, 49, -7.6);
+  } else if(spec.hat==='giraffe'){
+    // ossicones (giraffe horns) on top of the raised head
+    add(new THREE.BoxGeometry(1.8,5,1.8), spec.hatC, hy+10, 0, -3.4);
+    add(new THREE.BoxGeometry(1.8,5,1.8), spec.hatC, hy+10, 0, 3.4);
+    add(new THREE.BoxGeometry(3,2.2,3), '#5a3a18', hy+13, 0, -3.4);
+    add(new THREE.BoxGeometry(3,2.2,3), '#5a3a18', hy+13, 0, 3.4);
+    // little ears out to the sides
+    add(new THREE.BoxGeometry(2,3,5.5), spec.hatC, hy+2.5, 0, -9.5);
+    add(new THREE.BoxGeometry(2,3,5.5), spec.hatC, hy+2.5, 0, 9.5);
+    // snout pushed out the front
+    add(new THREE.BoxGeometry(9,6,6), spec.skin, hy-2, 9);
   }
   if(spec.shoulders){
     add(new THREE.BoxGeometry(8,4.5,10), spec.shoulders, 38, 0, -11.5);
@@ -2054,9 +2083,15 @@ function buildPlayer(f,v){
     st.position.set(sx,18,0); body.add(st);
   }
   const headMats=[skinM,skinM,skinM,skinM,faceM,skinM];
+  const headY=(spec&&spec.headY)?spec.headY:45.5;
   const head=new THREE.Mesh(new THREE.BoxGeometry(17,15,15),headMats);
-  head.position.y=45.5; body.add(head);
-  if(spec){ addSpecialGear(body, spec, M); }
+  head.position.y=headY; body.add(head);
+  if(spec&&spec.neck){ // long neck (giraffe): column from torso top up to the raised head
+    const top=headY-7.5, neckH=top-37.5;
+    const neck=new THREE.Mesh(new THREE.BoxGeometry(7.5,neckH,7.5),skinM);
+    neck.position.y=37.5+neckH/2; body.add(neck);
+  }
+  if(spec){ addSpecialGear(body, spec, M, headY); }
   else {
     const cap=new THREE.Mesh(new THREE.BoxGeometry(18,5.5,16),hairM); cap.position.y=53.5; body.add(cap);
     const backHair=new THREE.Mesh(new THREE.BoxGeometry(18,9,3.5),hairM); backHair.position.set(0,48,-7.2); body.add(backHair);
@@ -2188,6 +2223,7 @@ function render3D(dt){
     const b=S.ball, bx=b?b.x-CX:0, bz=b?b.y-CY:0;
     let tgtX=clamp(bx,-400,400)*0.62, tgtZ=clamp(bz,-220,220)*0.42;
     let h=CONFIG.CAM_HEIGHT, d=CONFIG.CAM_DIST;
+    if(typeof TOUCH!=='undefined'&&TOUCH.enabled){ h*=0.8; d*=0.8; } // mobile: pull the camera in ~20% so the field reads bigger
     if(S.celebrate){ // close-up on the scorer
       const sc=S.celebrate.scorer;
       tgtX=clamp(((sc?sc.x:S.celebrate.x)||CX)-CX,-460,460)*0.95;
@@ -2675,13 +2711,18 @@ const CK=CONFIG.CHECKOUT;
 // (amount = PRICE_FBG * 10^18 + code). Used by RESTORE to map a tx back to its item.
 const ITEM_CODES={
   team:{usa:101,mexico:102,brazil:103,argentina:104,france:105,england:106,germany:107,spain:108},
-  char:{cowboy:201,bots:202,bear:203,salmon:204,hingle:205,messi:206,fragbot:207,emin:208,dayman:209,squatch:210}
+  char:{cowboy:201,bots:202,bear:203,salmon:204,hingle:205,messi:206,fragbot:207,emin:208,dayman:209,squatch:210,giraffe:211}
 };
 const TRANSFER_TOPIC='0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
 const WALLET={addr:null,busy:false,bal:null};
 function ckShort(a){ return a? a.slice(0,6)+'…'+a.slice(-4):''; }
 function ckPad(x){ x=(''+x).replace(/^0x/,'').toLowerCase(); return '0'.repeat(64-x.length)+x; }
-function ckAmountWei(code){ return 10n**BigInt(CK.DECIMALS)*BigInt(CK.PRICE_FBG)+BigInt(code); }
+// two-tier pricing: premium-flagged items cost PRICE_PREMIUM, everything else PRICE_BASE
+function itemPrice(kind,key){
+  if(kind==='char' && SPECIALS[key] && SPECIALS[key].premium) return CK.PRICE_PREMIUM;
+  return CK.PRICE_BASE;
+}
+function ckAmountWei(code,price){ return 10n**BigInt(CK.DECIMALS)*BigInt(price||CK.PRICE_BASE)+BigInt(code); }
 function ckProvider(){ return WALLET.provider||((typeof window!=='undefined'&&window.ethereum)?window.ethereum:null); }
 async function ckRpc(method,params){
   const r=await fetch(CK.RPC,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method:method,params:params})});
@@ -2809,8 +2850,8 @@ function ckMatchTransfer(rc,wantWei,fromAddr){
   }
   return false;
 }
-async function ckWaitVerify(hash,code,fromAddr){
-  const want=ckAmountWei(code);
+async function ckWaitVerify(hash,code,fromAddr,price){
+  const want=ckAmountWei(code,price);
   for(let i=0;i<60;i++){
     await new Promise(function(r){ setTimeout(r,2000); });
     let rc=null; try{ rc=await ckRpc('eth_getTransactionReceipt',[hash]); }catch(e){}
@@ -2830,16 +2871,17 @@ async function buyItem(kind,key,name,btn){
   if(WALLET.busy){ ckToast('Finish the current purchase first.'); return; }
   if(!WALLET.addr){ await connectWallet(); if(!WALLET.addr) return; }
   const code=ITEM_CODES[kind]&&ITEM_CODES[kind][key]; if(!code){ ckToast('Unknown item.'); return; }
-  if(!confirm('Buy '+name+' for '+CK.PRICE_FBG+' $FBG?\n\nThis sends a real $FBG transfer on Avalanche to the FBG treasury.')) return;
+  const price=itemPrice(kind,key);
+  if(!confirm('Buy '+name+' for '+price+' $FBG?\n\nThis sends a real $FBG transfer on Avalanche to the FBG treasury.')) return;
   WALLET.busy=true;
   const setBtn=function(t){ if(btn){ btn.textContent=t; btn.disabled=true; btn.style.opacity='0.6'; } };
   setBtn('CONFIRM IN WALLET…');
   try{
-    const amt=ckAmountWei(code);
+    const amt=ckAmountWei(code,price);
     const data='0xa9059cbb'+ckPad(CK.TREASURY)+ckPad(amt.toString(16));
     const tx=await ckProvider().request({method:'eth_sendTransaction',params:[{from:WALLET.addr,to:CK.TOKEN,data:data}]});
     setBtn('VERIFYING…');
-    const ok=await ckWaitVerify(tx,code,WALLET.addr);
+    const ok=await ckWaitVerify(tx,code,WALLET.addr,price);
     if(ok){ ckGrant(kind,key,tx); ckToast(name+' unlocked!'); try{ sPow(); }catch(e){} }
     else if(ok===null) ckToast('Still confirming. If it completes, use RESTORE with tx '+ckShort(tx));
     else ckToast('Verification failed for '+ckShort(tx)+'. Check it on Snowtrace, then use RESTORE.');
@@ -2864,7 +2906,7 @@ async function restorePurchases(){
   ckToast('Payment found but it does not match a store item.');
 }
 function openStore(){ buildStore(); refreshBal(); $('storeOv').style.display='flex'; }
-function priceLabel(){ return CK.PRICE_FBG+' $FBG'; }
+function priceLabel(kind,key){ return itemPrice(kind,key)+' $FBG'; }
 function buildStore(){
   updateWalletBar();
   const g=$('storeGrid'); if(!g) return; g.innerHTML='';
@@ -2880,8 +2922,8 @@ function buildStore(){
     btn.className='modeBtn';
     btn.style.cssText='padding:7px 16px;font-size:13px'+(own?';opacity:.55':'');
     if(own){ btn.textContent='OWNED ✓'; btn.disabled=true; }
-    else if(CK.LIVE&&CK.TREASURY){ btn.textContent='BUY · '+priceLabel(); btn.onclick=function(){ buyItem('team',k,f.name,btn); }; }
-    else { btn.textContent=priceLabel()+' · SOON'; btn.disabled=true; btn.style.opacity='0.5'; }
+    else if(CK.LIVE&&CK.TREASURY){ btn.textContent='BUY · '+priceLabel('team',k); btn.onclick=function(){ buyItem('team',k,f.name,btn); }; }
+    else { btn.textContent=priceLabel('team',k)+' · SOON'; btn.disabled=true; btn.style.opacity='0.5'; }
     card.appendChild(btn);
     g.appendChild(card);
   }
@@ -2898,8 +2940,8 @@ function buildCharCards(){
     const btn=document.createElement('button'); btn.className='modeBtn';
     btn.style.cssText='padding:7px 16px;font-size:13px'+(own?';opacity:.55':'');
     if(own){ btn.textContent='OWNED ✓'; btn.disabled=true; }
-    else if(CK.LIVE&&CK.TREASURY){ btn.textContent='BUY · '+priceLabel(); btn.onclick=function(){ buyItem('char',k,ch.name,btn); }; }
-    else { btn.textContent=priceLabel()+' · SOON'; btn.disabled=true; btn.style.opacity='0.5'; }
+    else if(CK.LIVE&&CK.TREASURY){ btn.textContent='BUY · '+priceLabel('char',k); btn.onclick=function(){ buyItem('char',k,ch.name,btn); }; }
+    else { btn.textContent=priceLabel('char',k)+' · SOON'; btn.disabled=true; btn.style.opacity='0.5'; }
     card.appendChild(btn); g.appendChild(card);
   }
 }
