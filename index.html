@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<!-- FVS-BUILD-2026-07-11-mobilepolish-r2 -->
 <meta charset="UTF-8">
 <title>FOOTBALL vs SOCCER</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
@@ -291,6 +292,14 @@
   body.touch #hintBar{display:none}
   /* rotated (forced-landscape) frame */
   body.rot90{overflow:hidden}
+  /* compact scoreboard for the rotated phone frame (portrait viewport is tall, so the
+     max-height mobile rules don't fire here — scope compact sizing to rot90 directly) */
+  body.rot90 #hud{top:4px;padding:2px 6px;gap:5px;border-radius:9px;border-width:1px}
+  body.rot90 .teamBlock{font-size:11px;min-width:60px;padding:2px 6px;gap:4px;border-radius:6px}
+  body.rot90 .midCol{min-width:74px}
+  body.rot90 #clock{font-size:13px}
+  body.rot90 #modePill{font-size:8px;padding:1px 7px;margin-top:1px;border-width:1px}
+  body.rot90 #swBarWrap{margin-top:2px;height:3px}
 </style>
 </head>
 <body>
@@ -317,18 +326,18 @@
     <h2>PAUSED</h2>
     <div class="pauseCols">
       <div class="pCard pCard--rules">
-        <div class="pCardHead"><span class="ico">&#128220;</span> GAME RULES</div>
+        <div class="pCardHead"><span class="ico">&#128220;</span> HOW TO SCORE</div>
         <div class="ruleItem ruleItem--soc">
           <span class="ruleIco">&#9917;</span>
-          <span class="ruleTxt"><b>SOCCER MODE &mdash;</b><br>Goal score: <span class="pts">2 pts</span></span>
+          <span class="ruleTxt"><b>Soccer</b> &mdash; goal = <span class="pts">2 pts</span></span>
         </div>
         <div class="ruleItem ruleItem--fb">
           <span class="ruleIco">&#127944;</span>
-          <span class="ruleTxt"><b>FOOTBALL MODE &mdash;</b><br>Endzone: <span class="pts">3 pts</span></span>
+          <span class="ruleTxt"><b>Football</b> &mdash; endzone = <span class="pts">3 pts</span></span>
         </div>
         <div class="ruleItem ruleItem--sw">
           <span class="ruleIco">&#128260;</span>
-          <span class="ruleTxt"><b>FIELD SWITCHES SPORTS &mdash;</b><br>Every <span class="pts">45s</span> (or Center Pad)</span>
+          <span class="ruleTxt"><b>Field flips</b> every <span class="pts">45s</span> or on the center pad</span>
         </div>
         <div class="powPillsRow">
           <span class="powPill" style="color:#ffe14d">&#9889; Speed</span>
@@ -339,18 +348,16 @@
       <div class="pCard pCard--tips">
         <div class="pCardHead"><span class="ico">&#128161;</span> TIPS</div>
         <div id="tipsTouch" style="display:none">
-          <div class="tipLine">&#128377;&#65039; Drag the left stick to move</div>
-          <div class="tipLine">&#128309; PASS taps a pass &mdash; on defense it tackles</div>
-          <div class="tipLine">&#128308; Hold SHOOT to charge, release to fire (soccer)</div>
-          <div class="tipLine">&#129505; SPRINT to run &mdash; tap it while carrying to juke</div>
-          <div class="tipLine">&#8644; Stand on the glowing center pad to flip the field early</div>
+          <div class="tipLine">&#128377;&#65039; Left stick moves your player</div>
+          <div class="tipLine">&#128309; PASS taps a pass &mdash; tackles on defense</div>
+          <div class="tipLine">&#128308; Hold SHOOT longer = stronger kick</div>
+          <div class="tipLine">&#129505; SPRINT to run &mdash; tap while carrying to juke</div>
         </div>
         <div id="tipsPC">
-          <div class="tipLine">&#127918; Move with WASD &middot; tap SPACE to pass or tackle</div>
-          <div class="tipLine">&#9917; Hold SPACE to charge a shot (soccer)</div>
-          <div class="tipLine">&#128064; SHIFT sprints &mdash; tap it while carrying to juke</div>
-          <div class="tipLine">&#8644; Stand on the glowing center pad to flip the field early</div>
-          <div class="tipLine">&#127925; H shows hints &middot; M mutes sound</div>
+          <div class="tipLine">&#127918; WASD moves &mdash; tap SPACE to pass / tackle</div>
+          <div class="tipLine">&#9917; Hold SPACE longer = stronger kick</div>
+          <div class="tipLine">&#128064; SHIFT sprints &mdash; tap while carrying to juke</div>
+          <div class="tipLine">&#8644; Center pad flips the field early &middot; M mutes</div>
         </div>
       </div>
     </div>
@@ -398,7 +405,7 @@
     <div class="tcBtn tcSprint" id="tcSprint">SPRINT<br>/ JUKE</div>
     <div class="tcCol">
       <div class="tcBtn tcPass" id="tcPass">PASS<br>/ TKL</div>
-      <div class="tcBtn tcShoot" id="tcShoot">SHOOT<br><small>HOLD&nbsp;=&nbsp;POWER</small></div>
+      <div class="tcBtn tcShoot" id="tcShoot">SHOOT</div>
     </div>
   </div>
 </div>
@@ -742,6 +749,8 @@ function audioInit(){
     crowdGain=AC.createGain(); crowdGain.gain.value=0.035;
     src.connect(lp); lp.connect(crowdGain); crowdGain.connect(AC.destination); src.start();
   }catch(e){AC=null}
+  // kick off music inside this first user gesture so iOS Safari allows playback
+  try{ playMusic(S&&S.screen==='play'?'musicMatch':'musicMenu'); }catch(e){}
 }
 function tone(f,dur,type='square',vol=0.16,slideTo=0){
   if(!AC||muted) return;
@@ -760,19 +769,20 @@ const AUD={};
   const files={goal:'sfx-goal',whistle:'sfx-whistle',kick:'sfx-kick',tackle:'sfx-tackle',
     pow:'sfx-powerup',morph:'sfx-morph',catch:'sfx-catch',musicMenu:'music-menu',musicMatch:'music-match'};
   for(const k in files){ try{ const a=new Audio();
-    a.addEventListener('canplaythrough',()=>{AUD[k]=a},{once:true});
-    a.onerror=()=>{}; a.src='audio/'+files[k]+'.mp3'; }catch(e){} }
+    a.preload='auto'; a.onerror=()=>{ if(AUD[k]===a) delete AUD[k]; };
+    a.src='audio/'+files[k]+'.mp3'; AUD[k]=a; /* assign now; iOS may never fire canplaythrough pre-gesture */ }catch(e){} }
 })();
 function playA(k,vol){ if(muted||!AUD[k]) return false;
   try{ const c=AUD[k].cloneNode(); c.volume=vol==null?0.8:vol; c.play().catch(()=>{}); return true; }catch(e){ return false; } }
 let curMusic=null,curMusicKey=null;
 function playMusic(key){
   if(!AC) return; // browsers block audio until the first click (audioInit)
-  if(curMusicKey===key) return;
+  if(curMusicKey===key && curMusic) return; // already playing this track
   if(curMusic){ try{curMusic.pause()}catch(e){} curMusic=null; }
   curMusicKey=key;
-  if(!key||muted||!AUD[key]) return;
-  try{ curMusic=AUD[key].cloneNode(); curMusic.loop=true; curMusic.volume=0.4; curMusic.play().catch(()=>{}); }catch(e){}
+  if(!key||muted||!AUD[key]) return; // not loaded yet / muted — don't latch, retry on a later frame
+  try{ const m=AUD[key].cloneNode(); m.loop=true; m.volume=0.4;
+    const p=m.play(); if(p&&p.catch) p.catch(()=>{}); curMusic=m; }catch(e){ curMusic=null; }
 }
 function audioMuteChanged(){ if(curMusic){try{curMusic.pause()}catch(e){}} curMusic=null; curMusicKey=undefined; }
 let sKick =()=>{ if(playA('kick',0.7)) return; tone(150,0.09,'triangle',0.22); tone(80,0.12,'sine',0.2); };
