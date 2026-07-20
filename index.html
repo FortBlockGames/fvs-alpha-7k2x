@@ -815,23 +815,32 @@ function tone(f,dur,type='square',vol=0.16,slideTo=0){
 const AUD={};
 (function(){ if(typeof Audio==='undefined') return;
   const files={goal:'sfx-goal',whistle:'sfx-whistle',kick:'sfx-kick',tackle:'sfx-tackle',
-    pow:'sfx-powerup',morph:'sfx-morph',catch:'sfx-catch',musicMenu:'music-menu',musicMatch:'music-match'};
+    pow:'sfx-powerup',morph:'sfx-morph',catch:'sfx-catch'};
   for(const k in files){ try{ const a=new Audio();
     a.addEventListener('canplaythrough',()=>{AUD[k]=a},{once:true});
     a.onerror=()=>{}; a.src='audio/'+files[k]+'.mp3'; }catch(e){} }
 })();
 function playA(k,vol){ if(muted||!AUD[k]) return false;
   try{ const c=AUD[k].cloneNode(); c.volume=vol==null?0.8:vol; c.play().catch(()=>{}); return true; }catch(e){ return false; } }
-let curMusic=null,curMusicKey=null;
+// --- looping music: dedicated preloaded elements, must be KICKED from a user gesture (mobile autoplay policy) ---
+let curMusicKey=null;
+const _MUSSRC={musicMenu:'audio/music-menu.mp3',musicMatch:'audio/music-match.mp3'};
+const _musEl={};
+function _getMus(key){ if(key in _musEl) return _musEl[key];
+  let a=null; try{ a=new Audio(); a.loop=true; a.preload='auto'; a.volume=0.4; a.src=_MUSSRC[key]||''; }catch(e){ a=null; }
+  _musEl[key]=a; return a; }
 function playMusic(key){
-  if(!AC) return; // browsers block audio until the first click (audioInit)
-  if(curMusicKey===key) return;
-  if(curMusic){ try{curMusic.pause()}catch(e){} curMusic=null; }
+  if(muted){ for(const k in _musEl){ const e=_musEl[k]; if(e){ try{e.pause()}catch(x){} } } curMusicKey=key; return; }
+  if(key===curMusicKey) return;   // only (re)start on a real change; gesture code resets curMusicKey to force the first play
+  for(const k in _musEl){ if(k!==key){ const e=_musEl[k]; if(e){ try{e.pause()}catch(x){} } } }
   curMusicKey=key;
-  if(!key||muted||!AUD[key]) return;
-  try{ curMusic=AUD[key].cloneNode(); curMusic.loop=true; curMusic.volume=0.4; curMusic.play().catch(()=>{}); }catch(e){}
+  if(!key) return;
+  const e=_getMus(key); if(!e) return;
+  try{ const pr=e.play(); if(pr&&pr.catch) pr.catch(()=>{}); }catch(x){}
 }
-function audioMuteChanged(){ if(curMusic){try{curMusic.pause()}catch(e){}} curMusic=null; curMusicKey=undefined; }
+// force-(re)start whatever track fits the current screen — call this from inside a real user gesture
+function startCurrentMusic(){ try{ curMusicKey=null; playMusic((typeof S!=='undefined'&&S.screen==='play')?'musicMatch':'musicMenu'); }catch(e){} }
+function audioMuteChanged(){ for(const k in _musEl){ const e=_musEl[k]; if(e){ try{e.pause()}catch(x){} } } curMusicKey=undefined; }
 let sKick =()=>{ if(playA('kick',0.7)) return; tone(150,0.09,'triangle',0.22); tone(80,0.12,'sine',0.2); };
 let sThud =()=>{ if(playA('tackle')) return; tone(72,0.14,'sawtooth',0.22); tone(50,0.18,'sine',0.2); };
 let sWhistle=()=>{ if(playA('whistle')) return; tone(2200,0.12,'square',0.1); setTimeout(()=>tone(2200,0.3,'square',0.1),160); };
@@ -863,7 +872,7 @@ window.addEventListener('keydown',e=>{
     }
     if(e.code==='KeyP'||e.code==='Escape'){ if(S.screen==='play'&&!NET) S.paused=!S.paused; }
     if(e.code==='KeyL'){ if(S.screen==='play') toggleLock(); }
-    if(e.code==='KeyM'){ muted=!muted; audioMuteChanged(); announceSmall(muted?'MUTED':'SOUND ON','#9fb3d8');
+    if(e.code==='KeyM'){ muted=!muted; audioMuteChanged(); if(!muted) startCurrentMusic(); announceSmall(muted?'MUTED':'SOUND ON','#9fb3d8');
       try{ $('sndBtn').textContent='SOUND: '+(muted?'OFF':'ON'); }catch(err){} }
     if(e.code==='KeyH'){ S.hintT=10; }
   }
@@ -1326,7 +1335,7 @@ function applyRot(force){
 }
 function isTouchDevice(){ try{ return ('ontouchstart' in window)||navigator.maxTouchPoints>0||/forcetouch/.test(location.search); }catch(e){ return false; } }
 // ===================== MOBILE OVERHAUL 2026-07-20: immersive + zoom-lock + fit + haptics + CP =====================
-const FVS_BUILD='FVS-BUILD-2026-07-20-mobile-cp-r5';
+const FVS_BUILD='FVS-BUILD-2026-07-20-mobile-cp-r6';
 try{ console.log('%c'+FVS_BUILD,'color:#7fd4ff'); }catch(e){}
 // --- lock pinch / double-tap zoom so the viewport can never scale on a phone ---
 ['gesturestart','gesturechange','gestureend'].forEach(function(g){ document.addEventListener(g,function(e){e.preventDefault();},{passive:false}); });
@@ -1334,6 +1343,7 @@ document.addEventListener('touchmove',function(e){ if(e.touches.length>1) e.prev
 (function(){ var lt=0; document.addEventListener('touchend',function(e){ var n=Date.now(); if(n-lt<=320){ e.preventDefault(); } lt=n; },{passive:false}); })();
 // --- claim fullscreen + lock landscape on the first real gesture and again at kickoff (Android honors it; iOS Safari ignores fullscreen/orientation outside an installed PWA, where the CSS self-rotate below covers it) ---
 function enterImmersive(){
+  try{ audioInit(); startCurrentMusic(); }catch(e){}   // first tap: unlock audio + start menu music within the gesture
   if(!isTouchDevice()) return;
   try{ var el=document.documentElement, rf=el.requestFullscreen||el.webkitRequestFullscreen;
     if(rf && !document.fullscreenElement && !document.webkitFullscreenElement){ var pr=rf.call(el); if(pr&&pr.catch) pr.catch(function(){}); } }catch(e){}
@@ -3218,7 +3228,7 @@ function startMatch(){
 }
 
 try{ if(typeof LOGOS!=='undefined') $('titleImg').src=LOGOS.svf; }catch(e){}
-$('sndBtn').onclick=()=>{ muted=!muted; audioMuteChanged(); $('sndBtn').textContent='SOUND: '+(muted?'OFF':'ON'); };
+$('sndBtn').onclick=()=>{ muted=!muted; audioMuteChanged(); if(!muted) startCurrentMusic(); $('sndBtn').textContent='SOUND: '+(muted?'OFF':'ON'); };
 $('resumeBtn').onclick=()=>{ S.paused=false; };
 $('pcCtrlBtn').onclick=()=>{ const c=$('pcCtrlCard'); const open=c.style.display==='none'; c.style.display=open?'block':'none'; const a=$('pcCtrlArrow'); if(a) a.innerHTML=open?'&#9652;':'&#9662;'; };
 $('quitBtn').onclick=()=>{
