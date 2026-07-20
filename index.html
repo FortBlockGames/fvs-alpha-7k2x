@@ -799,6 +799,7 @@ function audioInit(){
     crowdGain=AC.createGain(); crowdGain.gain.value=0.035;
     src.connect(lp); lp.connect(crowdGain); crowdGain.connect(AC.destination); src.start();
   }catch(e){AC=null}
+  try{ if(typeof S!=='undefined' && S.screen==='menu' && typeof startCurrentMusic==='function') startCurrentMusic(); }catch(e){}
 }
 function tone(f,dur,type='square',vol=0.16,slideTo=0){
   if(!AC||muted) return;
@@ -827,7 +828,7 @@ let curMusicKey=null;
 const _MUSSRC={musicMenu:'audio/music-menu.mp3',musicMatch:'audio/music-match.mp3'};
 const _musEl={};
 function _getMus(key){ if(key in _musEl) return _musEl[key];
-  let a=null; try{ a=new Audio(); a.loop=true; a.preload='auto'; a.volume=0.4; a.src=_MUSSRC[key]||''; }catch(e){ a=null; }
+  let a=null; try{ a=new Audio(); a.loop=true; a.preload='auto'; a.volume=0.4; a.src=_MUSSRC[key]||''; try{a.load();}catch(x){} }catch(e){ a=null; }
   _musEl[key]=a; return a; }
 function playMusic(key){
   if(muted){ for(const k in _musEl){ const e=_musEl[k]; if(e){ try{e.pause()}catch(x){} } } curMusicKey=key; return; }
@@ -1335,7 +1336,7 @@ function applyRot(force){
 }
 function isTouchDevice(){ try{ return ('ontouchstart' in window)||navigator.maxTouchPoints>0||/forcetouch/.test(location.search); }catch(e){ return false; } }
 // ===================== MOBILE OVERHAUL 2026-07-20: immersive + zoom-lock + fit + haptics + CP =====================
-const FVS_BUILD='FVS-BUILD-2026-07-20-mobile-cp-r6';
+const FVS_BUILD='FVS-BUILD-2026-07-20-mobile-cp-r7';
 try{ console.log('%c'+FVS_BUILD,'color:#7fd4ff'); }catch(e){}
 // --- lock pinch / double-tap zoom so the viewport can never scale on a phone ---
 ['gesturestart','gesturechange','gestureend'].forEach(function(g){ document.addEventListener(g,function(e){e.preventDefault();},{passive:false}); });
