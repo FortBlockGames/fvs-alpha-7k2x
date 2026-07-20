@@ -26,11 +26,18 @@ body.touch #storeOv .panel,body.touch #statsOv .panel,body.touch #lbOv .panel{ma
 #endConfettiHost{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:6}
 @keyframes endConf{to{transform:translateY(1000px) rotate(720deg);opacity:0}}
 /* team/character select: horizontal landscape layout that FILLS the frame (no scaled-down strip) */
-body.touch .view-play #previewPanel,body.touch .view-online #previewPanel{padding:8px 16px 10px}
-body.touch .view-play #paneL,body.touch .view-online #paneL{flex:0 1 780px;max-width:800px;display:grid;grid-template-columns:minmax(0,40%) minmax(0,60%);column-gap:18px;row-gap:2px;align-items:center;text-align:left}
-body.touch .view-play #paneL>canvas,body.touch .view-online #paneL>canvas{grid-column:1;grid-row:1 / -1;width:100%;height:auto;max-height:40vh;align-self:center;margin:0}
-body.touch .view-play #paneL>*:not(canvas),body.touch .view-online #paneL>*:not(canvas){grid-column:2}
-body.touch .view-play #paneL .portalTag,body.touch .view-online #paneL .portalTag{margin:0 0 4px 0}
+.selInfo{display:contents}   /* desktop: children flow normally in the pane */
+body.touch .view-play #previewPanel,body.touch .view-online #previewPanel{padding:10px 24px 12px}
+/* touch landscape: model on the left, one clean info stack on the right */
+body.touch .view-play #paneL,body.touch .view-online #paneL{flex:0 1 860px;max-width:880px;display:flex;align-items:center;justify-content:center;gap:28px;text-align:left}
+/* model: preserve the 280:300 aspect (no squish), height-driven so it fills the left side and the space below */
+body.touch .view-play #paneL>canvas,body.touch .view-online #paneL>canvas{flex:0 0 auto;height:min(66vh,370px);width:auto;max-width:46%;max-height:none;margin:0}
+body.touch .view-play #paneL .selInfo,body.touch .view-online #paneL .selInfo{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:10px;flex:1 1 auto;min-width:0;max-width:470px}
+body.touch .view-play #paneL .portalTag,body.touch .view-online #paneL .portalTag{margin:0}
+body.touch .view-play #paneL .paneHead,body.touch .view-online #paneL .paneHead{margin:0;text-align:left}
+body.touch .view-play #paneL .paneName,body.touch .view-online #paneL .paneName{margin:2px 0}
+body.touch .view-play #paneL .catTabs,body.touch .view-online #paneL .catTabs{justify-content:flex-start;margin:0}
+body.touch .view-play #paneL .carousel,body.touch .view-online #paneL .carousel{margin:0;width:100%}
 body.touch #underRow{flex-direction:row !important;align-items:center;justify-content:center;gap:20px;margin-top:8px;flex-wrap:wrap}
 body.touch #specialRow{margin-top:6px !important}
 body.touch #specialRow .chips{justify-content:center;flex-wrap:wrap}
@@ -465,20 +472,22 @@ body.touch #touchCtl .tcLock{display:flex}
       <div id="previewPanel">
         <div id="vsPanes">
           <div class="pane" id="paneL">
-            <div class="portalTag">&#9670; HOLO-PORTAL 1</div>
-            <div class="paneHead">
-              <div class="paneBloc" id="p1Bloc">PENTEVAL</div>
-              <div class="paneName" id="p1Name">Chickows</div>
-              <div class="paneTag" id="p1Tag">HEAVY TACKLER</div>
-            </div>
             <canvas id="prevL" width="280" height="300"></canvas>
-            <div class="catTabs" id="p1Tabs"></div>
-            <div class="carousel">
-              <div class="carArrow" id="p1Ar1">&#8249;</div>
-              <div class="chips" id="p1Chips"></div>
-              <div class="carArrow" id="p1Ar2">&#8250;</div>
+            <div class="selInfo">
+              <div class="portalTag">&#9670; HOLO-PORTAL 1</div>
+              <div class="paneHead">
+                <div class="paneBloc" id="p1Bloc">PENTEVAL</div>
+                <div class="paneName" id="p1Name">Chickows</div>
+                <div class="paneTag" id="p1Tag">HEAVY TACKLER</div>
+              </div>
+              <div class="catTabs" id="p1Tabs"></div>
+              <div class="carousel">
+                <div class="carArrow" id="p1Ar1">&#8249;</div>
+                <div class="chips" id="p1Chips"></div>
+                <div class="carArrow" id="p1Ar2">&#8250;</div>
+              </div>
+              <div id="p1Label" style="display:none"></div>
             </div>
-            <div id="p1Label" style="display:none"></div>
           </div>
           <div id="vsDivider"></div>
           <div class="pane" id="paneR">
@@ -1317,7 +1326,7 @@ function applyRot(force){
 }
 function isTouchDevice(){ try{ return ('ontouchstart' in window)||navigator.maxTouchPoints>0||/forcetouch/.test(location.search); }catch(e){ return false; } }
 // ===================== MOBILE OVERHAUL 2026-07-20: immersive + zoom-lock + fit + haptics + CP =====================
-const FVS_BUILD='FVS-BUILD-2026-07-20-mobile-cp-r3';
+const FVS_BUILD='FVS-BUILD-2026-07-20-mobile-cp-r5';
 try{ console.log('%c'+FVS_BUILD,'color:#7fd4ff'); }catch(e){}
 // --- lock pinch / double-tap zoom so the viewport can never scale on a phone ---
 ['gesturestart','gesturechange','gestureend'].forEach(function(g){ document.addEventListener(g,function(e){e.preventDefault();},{passive:false}); });
