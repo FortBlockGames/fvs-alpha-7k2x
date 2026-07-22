@@ -70,6 +70,15 @@ body.touch #touchCtl .tcLock{display:flex}
   #modePill.fb{color:#ffc04d;border-color:#ff9f1c;background:rgba(255,159,28,.2)}
   #swBarWrap{margin-top:4px;height:4px;background:rgba(255,255,255,.15);border-radius:2px;overflow:hidden}
   #swBar{height:100%;width:0%;background:#2ecc71}
+  /* SCOREBOARD compact on ALL touch devices (2026-07-22): the old shrink was gated on @media(max-height:560px),
+     which never matches on a self-rotated iPhone (portrait viewport ~844px tall) — so the HUD rendered full desktop size.
+     Keyed to body.touch it stays small regardless of orientation. */
+  body.touch #hud{top:6px;padding:4px 9px;gap:8px;border-radius:11px;border-width:1px}
+  body.touch .teamBlock{font-size:13px;min-width:74px;padding:3px 8px;gap:6px;border-radius:8px}
+  body.touch .midCol{min-width:90px}
+  body.touch #clock{font-size:15px}
+  body.touch #modePill{font-size:9.5px;padding:2px 9px;margin-top:2px;border-width:1px}
+  body.touch #swBarWrap{margin-top:2px;height:3px}
   #announceBox{position:fixed;top:24%;left:0;right:0;z-index:6;text-align:center;pointer-events:none}
   .ann{font-weight:900;font-size:54px;margin:4px 0;text-shadow:0 0 24px currentColor,0 3px 6px rgba(0,0,0,.8);
     -webkit-text-stroke:2px rgba(0,0,0,.6);animation:annPop .25s ease-out, annFade .4s ease-in forwards;}
@@ -132,7 +141,8 @@ body.touch #touchCtl .tcLock{display:flex}
   .pBtn--resume:hover{background:rgba(47,191,107,.16);box-shadow:0 0 30px rgba(47,191,107,.5)}
   /* ---- mobile touch controls ---- */
   #touchCtl{position:fixed;inset:0;z-index:8;display:none;pointer-events:none;touch-action:none}
-  #touchCtl .tcStick{position:absolute;left:calc(20px + env(safe-area-inset-left));bottom:calc(20px + env(safe-area-inset-bottom));width:130px;height:130px;border-radius:50%;background:rgba(20,27,54,.30);border:2px solid rgba(150,180,255,.45);pointer-events:auto;touch-action:none}
+  /* DYNAMIC joystick: spawns wherever the player first touches open field (JS sets left/top). pointer-events:none so it never captures — input is read on document. */
+  #touchCtl .tcStick{position:absolute;left:0;top:0;width:126px;height:126px;border-radius:50%;background:rgba(20,27,54,.28);border:2px solid rgba(150,180,255,.42);pointer-events:none;touch-action:none;display:none;z-index:9;box-shadow:0 2px 14px rgba(0,0,0,.35)}
   #touchCtl .tcKnob{position:absolute;left:50%;top:50%;width:58px;height:58px;margin:-29px 0 0 -29px;border-radius:50%;background:rgba(120,160,255,.75);border:2px solid #cfe0ff;box-shadow:0 2px 10px rgba(0,0,0,.45)}
   #touchCtl .tcBtns{position:absolute;right:calc(22px + env(safe-area-inset-right));bottom:calc(26px + env(safe-area-inset-bottom));display:flex;gap:16px;align-items:flex-end}
   #touchCtl .tcPause{position:absolute;top:calc(12px + env(safe-area-inset-top));right:calc(14px + env(safe-area-inset-right));width:50px;height:50px;border-radius:12px;pointer-events:auto;touch-action:none;display:flex;align-items:center;justify-content:center;font-size:17px;letter-spacing:3px;color:#cfe0ff;background:rgba(20,27,54,.55);border:1.5px solid rgba(150,180,255,.45)}
@@ -169,8 +179,8 @@ body.touch #touchCtl .tcLock{display:flex}
     .pickLabel{margin:4px 0 6px;font-size:13px}
   }
   @media (max-height:560px){
-    #touchCtl .tcStick{width:90px;height:90px;left:calc(12px + env(safe-area-inset-left));bottom:calc(12px + env(safe-area-inset-bottom))}
-    #touchCtl .tcKnob{width:40px;height:40px;margin:-20px 0 0 -20px}
+    #touchCtl .tcStick{width:104px;height:104px}
+    #touchCtl .tcKnob{width:46px;height:46px;margin:-23px 0 0 -23px}
     #touchCtl .tcBtns{right:calc(12px + env(safe-area-inset-right));bottom:calc(12px + env(safe-area-inset-bottom));gap:10px}
     #touchCtl .tcAction{width:72px;height:72px;font-size:10px}
     #touchCtl .tcSprint{width:58px;height:58px;font-size:9px;margin-bottom:8px}
@@ -1337,7 +1347,7 @@ function applyRot(force){
 }
 function isTouchDevice(){ try{ return ('ontouchstart' in window)||navigator.maxTouchPoints>0||/forcetouch/.test(location.search); }catch(e){ return false; } }
 // ===================== MOBILE OVERHAUL 2026-07-20: immersive + zoom-lock + fit + haptics + CP =====================
-const FVS_BUILD='FVS-BUILD-2026-07-20-mobile-cp-r8';
+const FVS_BUILD='FVS-BUILD-2026-07-22-dynstick-hud-r9';
 try{ console.log('%c'+FVS_BUILD,'color:#7fd4ff'); }catch(e){}
 // --- lock pinch / double-tap zoom so the viewport can never scale on a phone ---
 ['gesturestart','gesturechange','gestureend'].forEach(function(g){ document.addEventListener(g,function(e){e.preventDefault();},{passive:false}); });
@@ -1453,14 +1463,35 @@ function setupTouch(){
   const stick=$('tcStick'), knob=$('tcKnob'); if(!stick) return;
   let sid=null, ox=0, oy=0; let R=52;
   const setKnob=(dx,dy)=>{ knob.style.transform='translate('+dx+'px,'+dy+'px)'; };
-  stick.addEventListener('touchstart',e=>{ e.preventDefault(); if(sid!==null) return; const tch=e.changedTouches[0]; sid=tch.identifier;
-    const r=stick.getBoundingClientRect(); R=Math.max(34,r.width*0.42); ox=r.left+r.width/2; oy=r.top+r.height/2; TOUCH.on=true; },{passive:false});
-  stick.addEventListener('touchmove',e=>{ e.preventDefault(); for(const tch of e.changedTouches){ if(tch.identifier!==sid) continue;
-    let dx=tch.clientX-ox, dy=tch.clientY-oy; if(ROT.on){ const t=dx; dx=dy; dy=-t; } const m=Math.hypot(dx,dy)||1; if(m>R){ dx*=R/m; dy*=R/m; }
-    TOUCH.mx=Math.max(-1,Math.min(1,dx/R)); TOUCH.my=Math.max(-1,Math.min(1,dy/R)); setKnob(dx,dy); } },{passive:false});
-  const endStick=e=>{ for(const tch of e.changedTouches){ if(tch.identifier===sid){ sid=null; TOUCH.on=false; TOUCH.mx=0; TOUCH.my=0; setKnob(0,0); } } };
-  stick.addEventListener('touchend',endStick,{passive:false});
-  stick.addEventListener('touchcancel',endStick,{passive:false});
+  // ----- DYNAMIC move stick (2026-07-22): appears wherever the player first touches open field, like Faction Flip.
+  //       No longer pinned to the corner. Buttons keep their own handlers; touches on them are ignored here.
+  const hideStick=()=>{ stick.style.display='none'; sid=null; TOUCH.on=false; TOUCH.mx=0; TOUCH.my=0; setKnob(0,0); };
+  const isBtnTarget=(t)=>{ try{ return !!(t&&t.closest&&t.closest('.tcBtn,#tcPause,#tcLock,.overlay,#pauseOv,button,a')); }catch(e){ return false; } };
+  const spawnStick=(cx,cy)=>{
+    // Place the ring so its CENTER sits under the finger. The stick lives inside <body>, which is CSS-rotated 90deg
+    // on a portrait phone (ROT.on) — so convert the screen touch point into body-local left/top.
+    stick.style.display='block'; stick.style.left='0px'; stick.style.top='0px';
+    const r0=stick.getBoundingClientRect();               // where local (0,0) lands on screen (absorbs the rotate+translate)
+    const hw=r0.width/2, hh=r0.height/2;
+    const wantDX=cx-(r0.left+hw), wantDY=cy-(r0.top+hh);   // screen delta needed from local origin to the finger
+    let Lx,Ly; if(ROT.on){ Lx=wantDY; Ly=-wantDX; } else { Lx=wantDX; Ly=wantDY; }   // rotate(90deg): local(Lx,Ly)->screen(-Ly,Lx)
+    stick.style.left=Lx+'px'; stick.style.top=Ly+'px';
+    R=Math.max(34,r0.width*0.42); ox=cx; oy=cy;           // origin kept in SCREEN space (touch deltas are screen space)
+    setKnob(0,0); TOUCH.on=true;
+  };
+  document.addEventListener('touchstart',e=>{
+    if(!TOUCH.enabled||typeof S==='undefined'||S.screen!=='play'||S.paused) return;
+    if(sid!==null) return;
+    const tch=e.changedTouches[0]; if(!tch||isBtnTarget(tch.target)) return;   // let on-screen buttons handle their own touches
+    sid=tch.identifier; e.preventDefault(); spawnStick(tch.clientX,tch.clientY);
+  },{passive:false});
+  document.addEventListener('touchmove',e=>{ if(sid===null) return;
+    for(const tch of e.changedTouches){ if(tch.identifier!==sid) continue; e.preventDefault();
+      let dx=tch.clientX-ox, dy=tch.clientY-oy; if(ROT.on){ const t=dx; dx=dy; dy=-t; } const m=Math.hypot(dx,dy)||1; if(m>R){ dx*=R/m; dy*=R/m; }
+      TOUCH.mx=Math.max(-1,Math.min(1,dx/R)); TOUCH.my=Math.max(-1,Math.min(1,dy/R)); setKnob(dx,dy); } },{passive:false});
+  const endStick=e=>{ if(sid===null) return; for(const tch of e.changedTouches){ if(tch.identifier===sid){ hideStick(); } } };
+  document.addEventListener('touchend',endStick,{passive:false});
+  document.addEventListener('touchcancel',endStick,{passive:false});
   const bind=(el,down,up)=>{ if(!el) return;
     el.addEventListener('touchstart',e=>{ e.preventDefault(); down(); },{passive:false});
     el.addEventListener('touchend',e=>{ e.preventDefault(); up(); },{passive:false});
